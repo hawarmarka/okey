@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Okey 101</title>
+<style>
+  :root {
+    --felt: #0f5132;
+    --felt-dark: #0a3d26;
+    --felt-light: #157347;
+    --tile: #f4ecd8;
+    --tile-edge: #d8ccae;
+    --ivory: #fbf6e9;
+    --red: #c0392b;
+    --blue: #1f5fb3;
+    --black: #2b2b2b;
+    --yellow: #e0a800;
+    --gold: #e9c46a;
+    --text: #e8f0ea;
+    --panel: rgba(0,0,0,.28);
+    --danger: #e76f51;
+    --ok: #2a9d8f;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(ellipse at center, var(--felt-light) 0%, var(--felt) 45%, var(--felt-dark) 100%);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  button {
+    font: inherit; cursor: pointer; border: none; border-radius: 10px;
+    padding: 10px 16px; font-weight: 600; color: #fff;
+    background: var(--felt-light); transition: transform .06s, filter .15s;
+  }
+  button:hover:not(:disabled) { filter: brightness(1.12); }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  button.gold { background: linear-gradient(180deg,#f0d080,#d4a843); color:#3a2c08; }
+  button.danger { background: var(--danger); }
+  button.ghost { background: transparent; border: 1px solid rgba(255,255,255,.3); }
+  input {
+    font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.25);
+    background: rgba(255,255,255,.1); color: #fff; outline: none;
+  }
+  input::placeholder { color: rgba(255,255,255,.5); }
+
+  /* ---- Lobi ---- */
+  #lobby {
+    max-width: 440px; margin: 8vh auto; padding: 28px;
+    background: var(--panel); border-radius: 18px; backdrop-filter: blur(4px);
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  }
+  #lobby h1 { margin: 0 0 4px; font-size: 32px; letter-spacing: .5px; }
+  #lobby .sub { opacity: .7; margin-bottom: 22px; font-size: 14px; }
+  #lobby .row { display: flex; flex-direction: column; gap: 10px; }
+  #lobby input { width: 100%; }
+  .seat-list { display:flex; flex-direction:column; gap:8px; margin:16px 0; }
+  .seat {
+    display:flex; align-items:center; gap:10px; padding:10px 12px;
+    background: rgba(255,255,255,.07); border-radius: 10px; font-size: 14px;
+  }
+  .seat .dot { width:9px; height:9px; border-radius:50%; background:#8f8; }
+  .seat .dot.off { background:#f88; }
+  .seat .bot-badge { font-size:11px; opacity:.6; margin-left:auto; }
+
+  /* ---- Masa ---- */
+  #table { display:none; height:100vh; position:relative; }
+  #table.active { display:block; }
+  .center {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    display:flex; flex-direction:column; align-items:center; gap:14px;
+    background: rgba(0,0,0,.2); padding:18px 26px; border-radius:16px;
+    border: 1px solid rgba(255,255,255,.08);
+  }
+  .center .meta { display:flex; gap:22px; align-items:center; font-size:13px; }
+  .center .meta b { font-size:15px; }
+  .pile {
+    width:52px; height:70px; border-radius:8px;
+    background: repeating-linear-gradient(45deg,#0c6b3f,#0c6b3f 6px,#0a5a35 6px,#0a5a35 12px);
+    border:1px solid rgba(0,0,0,.3); display:flex; align-items:center; justify-content:center;
+    font-size:11px; color:rgba(255,255,255,.85); box-shadow: 2px 2px 0 rgba(0,0,0,.25);
+  }
+  .table-melds {
+    display:flex; flex-wrap:wrap; gap:10px; justify-content:center;
+    max-width: 620px; max-height: 210px; overflow:auto; padding: 4px;
+  }
+  .meld {
+    display:flex; gap:3px; padding:6px; border-radius:10px;
+    background: rgba(0,0,0,.18); border:1px solid rgba(255,255,255,.08);
+  }
+  .meld.selectable { cursor:pointer; outline:2px solid transparent; }
+  .meld.selectable:hover { outline-color: var(--gold); }
+  .meld.selected { outline:2px solid var(--gold); }
+  .meld .owner { font-size:10px; opacity:.6; align-self:center; margin-right:4px; writing-mode:vertical-rl; }
+
+  /* ---- Oyuncular ---- */
+  .player {
+    position:absolute; display:flex; flex-direction:column; align-items:center; gap:6px;
+    padding:8px 12px; border-radius:12px; background: rgba(0,0,0,.22); min-width:120px;
+    transition: box-shadow .2s;
+  }
+  .player.turn { box-shadow: 0 0 0 2px var(--gold), 0 0 22px rgba(233,196,106,.5); }
+  .player .pname { font-weight:700; font-size:14px; display:flex; align-items:center; gap:6px; }
+  .player .pstat { font-size:12px; opacity:.75; }
+  .player .opened-badge { font-size:10px; background:var(--ok); padding:1px 6px; border-radius:6px; }
+  .player .mini-hand { display:flex; gap:2px; }
+  .player .mini { width:14px; height:20px; background:#0c6b3f; border-radius:3px; border:1px solid rgba(0,0,0,.3);}
+  .player .their-discard { margin-top:2px; }
+  .pos-top { top:14px; left:50%; transform:translateX(-50%); }
+  .pos-left { left:14px; top:50%; transform:translateY(-50%); }
+  .pos-right { right:14px; top:50%; transform:translateY(-50%); }
+
+  /* ---- Taşlar ---- */
+  .tile {
+    width:44px; height:60px; border-radius:7px; position:relative;
+    background: linear-gradient(160deg, var(--ivory), var(--tile));
+    border:1px solid var(--tile-edge);
+    box-shadow: 1px 2px 3px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.7);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:22px; user-select:none; flex:0 0 auto;
+  }
+  .tile.small { width:30px; height:42px; font-size:15px; border-radius:5px; }
+  .tile.c-kirmizi { color: var(--red); }
+  .tile.c-mavi { color: var(--blue); }
+  .tile.c-siyah { color: var(--black); }
+  .tile.c-sari { color: var(--yellow); }
+  .tile .dot { position:absolute; bottom:6px; width:6px; height:6px; border-radius:50%;
+    background: currentColor; opacity:.55; }
+  .tile.fake { color:#8e44ad; font-size:16px; }
+  .tile.fake::after { content:"★"; }
+  .tile .okey-rib {
+    position:absolute; top:-6px; right:-6px; background:var(--gold); color:#3a2c08;
+    font-size:8px; font-weight:800; padding:1px 4px; border-radius:6px; }
+
+  /* ---- Elim ---- */
+  #myhand-wrap {
+    position:absolute; bottom:0; left:0; right:0; padding:12px 16px 16px;
+    background: linear-gradient(180deg, transparent, rgba(0,0,0,.35));
+  }
+  #myinfo { display:flex; align-items:center; gap:14px; margin-bottom:8px; font-size:14px; flex-wrap:wrap; }
+  #myinfo .me-name { font-weight:800; }
+  #myhand { display:flex; gap:6px; flex-wrap:wrap; min-height:62px; align-items:flex-end; }
+  .tile.selectable { cursor:pointer; }
+  .tile.selectable:hover { transform: translateY(-4px); }
+  .tile.selected { transform: translateY(-10px); box-shadow: 0 0 0 2px var(--gold), 1px 2px 6px rgba(0,0,0,.4); }
+  .tile.staged { opacity:.45; }
+  #controls { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center; }
+  #staging { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px; min-height:0; }
+  .staged-group { display:flex; gap:2px; padding:4px; background:rgba(233,196,106,.15);
+    border:1px dashed var(--gold); border-radius:8px; }
+  .hint { font-size:12px; opacity:.7; }
+
+  /* ---- Log + toast + sonuç ---- */
+  #log {
+    position:absolute; top:14px; right:14px; width:230px; max-height:34vh; overflow:auto;
+    background: rgba(0,0,0,.3); border-radius:12px; padding:10px 12px; font-size:12px;
+    line-height:1.5; display:none;
+  }
+  #log.show { display:block; }
+  #log h4 { margin:0 0 6px; font-size:12px; opacity:.7; }
+  #log div { opacity:.9; margin-bottom:2px; }
+  #toast {
+    position:fixed; top:16px; left:50%; transform:translateX(-50%);
+    background:var(--danger); color:#fff; padding:10px 18px; border-radius:10px;
+    font-weight:600; opacity:0; transition:opacity .25s; pointer-events:none; z-index:50;
+    box-shadow:0 8px 24px rgba(0,0,0,.4);
+  }
+  #toast.show { opacity:1; }
+  #result {
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.55); z-index:40;
+  }
+  #result.show { display:flex; }
+  #result .card {
+    background:var(--felt); border:1px solid rgba(255,255,255,.12); border-radius:18px;
+    padding:28px 32px; min-width:320px; box-shadow:0 20px 60px rgba(0,0,0,.5);
+  }
+  #result h2 { margin:0 0 14px; }
+  #result table { width:100%; border-collapse:collapse; font-size:14px; }
+  #result td { padding:6px 10px; border-bottom:1px solid rgba(255,255,255,.08); }
+  #result td.delta.plus { color:var(--danger); }
+  #result td.delta.zero { color:var(--ok); }
+  .topbar { position:absolute; top:14px; left:14px; display:flex; gap:8px; z-index:10; }
+  .topbar .room-code { background:rgba(0,0,0,.3); padding:8px 12px; border-radius:10px; font-size:13px; }
+</style>
+</head>
+<body>
+  <!-- LOBİ -->
+  <div id="lobby">
+    <h1>Okey&nbsp;101</h1>
+    <div class="sub">Kendi sunucunda, arkadaşlarınla veya botlara karşı.</div>
+    <div class="row">
+      <input id="in-name" placeholder="Adın" maxlength="20" />
+      <input id="in-room" placeholder="Oda kodu (örn. salon1)" maxlength="24" />
+      <button class="gold" id="btn-join">Odaya Gir</button>
+    </div>
+    <div id="lobby-room" style="display:none">
+      <div class="seat-list" id="seat-list"></div>
+      <div class="row">
+        <button class="ghost" id="btn-addbots">Boş yerleri bota doldur</button>
+        <button class="gold" id="btn-start" disabled>Oyunu Başlat</button>
+      </div>
+      <div class="hint" id="lobby-hint" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <!-- MASA -->
+  <div id="table">
+    <div class="topbar">
+      <div class="room-code" id="room-code"></div>
+      <button class="ghost" id="btn-log">Günlük</button>
+    </div>
+    <div id="log"><h4>Oyun günlüğü</h4><div id="log-body"></div></div>
+
+    <div class="player pos-top" id="p-top"></div>
+    <div class="player pos-left" id="p-left"></div>
+    <div class="player pos-right" id="p-right"></div>
+
+    <div class="center">
+      <div class="meta">
+        <div>Gösterge<br><span id="indicator"></span></div>
+        <div>Okey<br><b id="okey-info"></b></div>
+        <div>Deste<br><span class="pile" id="draw-pile">—</span></div>
+      </div>
+      <div class="table-melds" id="table-melds"></div>
+    </div>
+
+    <div id="myhand-wrap">
+      <div id="myinfo"></div>
+      <div id="myhand"></div>
+      <div id="staging"></div>
+      <div id="controls"></div>
+    </div>
+  </div>
+
+  <!-- SONUÇ -->
+  <div id="result"><div class="card">
+    <h2 id="result-title"></h2>
+    <table id="result-table"></table>
+    <div style="margin-top:18px; text-align:right">
+      <button class="gold" id="btn-newhand">Yeni El</button>
+    </div>
+  </div></div>
+
+  <div id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
